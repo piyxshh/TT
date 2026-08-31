@@ -1,0 +1,53 @@
+# Environment & Secrets (Never commit credentials)
+.env
+.env.*
+.env.local
+**/.env
+**/.env.*
+*.env
+!*.env.example
+!.env.example
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
+test_agent.py
+
+# Node & Build outputs
+node_modules/
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# Transcripts & Recordings (generated at runtime, kept local per PRD §4)
+transcripts/*
+!transcripts/.gitkeep
+recordings/*
+!recordings/.gitkeep
+
+# Exclude assignment instructions and extra planning markdown docs — ONLY README.md is committed
+*.md
+!README.md
+
+# OS & Logs
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# IDE configuration
+.vscode/
+.idea/
+*.swp
+*.swo
