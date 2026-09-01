@@ -133,6 +133,17 @@ export default function App() {
     }
   }
 
+  // Check URL query parameters on mount (e.g. ?id=...)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id") || params.get("interviewId");
+    if (id) {
+      setInterviewId(id);
+      setPhase("result");
+      fetchResult(id);
+    }
+  }, []);
+
   useEffect(() => {
     if (phase === "result" && interviewId) fetchResult(interviewId);
   }, [phase, interviewId]);
@@ -171,82 +182,93 @@ export default function App() {
 
         {/* ═══ SETUP PHASE ═══ */}
         {phase === "setup" && (
-          <div className="card">
-            <div className="card-header">
-              <div>
-                <div className="card-title">New Interview</div>
-                <div className="card-subtitle">
-                  Configure the candidate details and interview questions. The AI agent will conduct the interview in order.
+          <>
+            <div className="card">
+              <div className="card-header">
+                <div>
+                  <div className="card-title">New Interview</div>
+                  <div className="card-subtitle">
+                    Configure the candidate details and interview questions. The AI agent will conduct the interview in order.
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="form-row">
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="candidate-name">Candidate name</label>
+                  <input
+                    id="candidate-name"
+                    className="form-input"
+                    value={candidateName}
+                    onChange={(e) => setCandidateName(e.target.value)}
+                    placeholder="e.g. Aarav"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="job-title">Job title</label>
+                  <input
+                    id="job-title"
+                    className="form-input"
+                    value={jobTitle}
+                    onChange={(e) => setJobTitle(e.target.value)}
+                    placeholder="e.g. Backend Engineer"
+                  />
+                </div>
+              </div>
+
               <div className="form-group">
-                <label className="form-label" htmlFor="candidate-name">Candidate name</label>
-                <input
-                  id="candidate-name"
-                  className="form-input"
-                  value={candidateName}
-                  onChange={(e) => setCandidateName(e.target.value)}
-                  placeholder="e.g. Aarav"
+                <label className="form-label" htmlFor="questions">
+                  Interview questions
+                  <span className="form-hint">— one per line</span>
+                </label>
+                <textarea
+                  id="questions"
+                  className="form-textarea"
+                  value={questionsText}
+                  onChange={(e) => setQuestionsText(e.target.value)}
+                  rows={5}
+                  placeholder={"Tell me about yourself.\nWhat is your experience with…\nDescribe a challenge you overcame."}
                 />
               </div>
-              <div className="form-group">
-                <label className="form-label" htmlFor="job-title">Job title</label>
-                <input
-                  id="job-title"
-                  className="form-input"
-                  value={jobTitle}
-                  onChange={(e) => setJobTitle(e.target.value)}
-                  placeholder="e.g. Backend Engineer"
-                />
+
+              <div className="btn-group">
+                <button id="start-interview" className="btn btn-primary" onClick={handleStart} disabled={busy}>
+                  {busy ? (
+                    <>Starting…</>
+                  ) : (
+                    <>
+                      <PlayIcon />
+                      Start Interview
+                    </>
+                  )}
+                </button>
+                <button className="btn btn-secondary" onClick={() => setQuestionsText(DEFAULT_QUESTIONS.join("\n"))}>
+                  Reset defaults
+                </button>
+              </div>
+
+              {setupError && (
+                <div className="alert alert-error" style={{ marginTop: 16 }}>
+                  {setupError}
+                </div>
+              )}
+
+              {/* Connection info */}
+              <div style={{ marginTop: 20, fontSize: 12, color: "var(--color-text-muted)", display: "flex", gap: 16 }}>
+                <span>Backend: <code>{BACKEND}</code></span>
+                <span>LiveKit: <code>{LIVEKIT_URL || "(not configured)"}</code></span>
               </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="questions">
-                Interview questions
-                <span className="form-hint">— one per line</span>
-              </label>
-              <textarea
-                id="questions"
-                className="form-textarea"
-                value={questionsText}
-                onChange={(e) => setQuestionsText(e.target.value)}
-                rows={5}
-                placeholder={"Tell me about yourself.\nWhat is your experience with…\nDescribe a challenge you overcame."}
-              />
+            {/* Past interviews lookup on home page */}
+            <div className="card" style={{ marginTop: 20 }}>
+              <h3 style={{ marginTop: 0 }}>Browse past interviews & transcripts</h3>
+              <p style={{ color: "var(--color-text-secondary)", fontSize: 13, marginTop: 4, marginBottom: 12 }}>
+                Select any completed interview to view its full conversation transcript and play the audio recording.
+              </p>
+              <InterviewLookup onSelect={(id) => { setInterviewId(id); setPhase("result"); fetchResult(id); }} />
             </div>
-
-            <div className="btn-group">
-              <button id="start-interview" className="btn btn-primary" onClick={handleStart} disabled={busy}>
-                {busy ? (
-                  <>Starting…</>
-                ) : (
-                  <>
-                    <PlayIcon />
-                    Start Interview
-                  </>
-                )}
-              </button>
-              <button className="btn btn-secondary" onClick={() => setQuestionsText(DEFAULT_QUESTIONS.join("\n"))}>
-                Reset defaults
-              </button>
-            </div>
-
-            {setupError && (
-              <div className="alert alert-error" style={{ marginTop: 16 }}>
-                {setupError}
-              </div>
-            )}
-
-            {/* Connection info */}
-            <div style={{ marginTop: 20, fontSize: 12, color: "var(--color-text-muted)", display: "flex", gap: 16 }}>
-              <span>Backend: <code>{BACKEND}</code></span>
-              <span>LiveKit: <code>{LIVEKIT_URL || "(not configured)"}</code></span>
-            </div>
-          </div>
+          </>
         )}
 
         {/* ═══ LIVE PHASE ═══ */}
