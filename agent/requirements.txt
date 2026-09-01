@@ -1,0 +1,19 @@
+# TapTalent Agent — LiveKit Inference only (no separate STT/LLM/TTS providers)
+# Install: pip install -r requirements.txt
+# LiveKit Cloud handles STT/LLM/TTS via LiveKit Inference — single LIVEKIT key, zero data retention.
+# See https://docs.livekit.io/agents/models/inference/ and https://livekit.com/products/inference
+# Models: inference.STT(model="deepgram/nova-3") / inference.LLM(model="openai/gpt-4.1-mini") / inference.TTS(model="cartesia/sonic-3")
+
+livekit-agents==1.7.1
+livekit==1.1.15
+# LiveKit Inference is built into livekit-agents — no separate STT/LLM/TTS plugins needed.
+# VAD + TurnDetector are also built-in via livekit.agents.inference (no livekit-plugins-silero needed).
+# livekit-local-inference is pulled transitively by livekit-agents for inference.VAD; silero plugin is optional fallback.
+# If you prefer silero VAD explicitly: pip install livekit-plugins-silero==1.7.1
+
+# Env + HTTP (backend POST)
+python-dotenv==1.0.1
+httpx==0.27.2
+
+# Utilities
+pydantic==2.8.2
