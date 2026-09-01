@@ -1,6 +1,6 @@
 # TapTalent — Real-Time AI Voice Interview Platform
 
-TapTalent is a real-time voice interview platform built with **LiveKit Agents** and **LiveKit Cloud Inference**. It conducts structured, automated candidate technical interviews using streaming Speech-to-Text (STT), Large Language Models (LLM), and Text-to-Speech (TTS), providing live visual status, real-time transcription, and post-interview recording playback.
+TapTalent is a real-time voice interview platform built entirely using the **LiveKit Agents SDK**. It conducts structured, automated candidate technical interviews using LiveKit's native real-time Speech-to-Text (STT), Large Language Models (LLM), and Text-to-Speech (TTS) capabilities, providing live visual status, real-time transcription, and post-interview recording playback.
 
 ---
 
@@ -12,14 +12,14 @@ TapTalent uses a decoupled, three-tier architecture coordinated over WebRTC:
 ┌─────────────────┐       WebRTC Audio & Data Channels       ┌────────────────────────┐
 │                 │ ◄──────────────────────────────────────► │                        │
 │ React / Vite UI │                                          │  Python Agent Worker   │
-│ (Candidate Web) │ ──┐                                  ┌── │  (LiveKit Agents)      │
+│ (Candidate Web) │ ──┐                                  ┌── │  (LiveKit Agents SDK)  │
 │                 │   │                                  │   │                        │
 └─────────────────┘   │                                  │   └────────────────────────┘
                       │ HTTP (Token, State, Transcripts) │               │
                       ▼                                  ▼               ▼
         ┌───────────────────────────┐                 ┌─────────────────────────────┐
         │   Node.js / Express API   │                 │   LiveKit Cloud Inference   │
-        │  (Token Minting & Store)  │                 │  (STT, LLM, TTS Gateway)    │
+        │  (Token Minting & Store)  │                 │  (Unified Voice & AI Engine)│
         └───────────────────────────┘                 └─────────────────────────────┘
 ```
 
@@ -27,27 +27,27 @@ TapTalent uses a decoupled, three-tier architecture coordinated over WebRTC:
 
 | Layer | Technology | Responsibilities |
 |---|---|---|
-| **Frontend** | React 18, Vite, `livekit-client` | Clean candidate interface, microphone permission handling, audio streaming, live progress tracking, and post-interview transcript/audio review. |
+| **Frontend** | React 18, Vite, `livekit-client` | Candidate interview interface, microphone permission handling, audio streaming, live progress tracking, and post-interview transcript/audio review. |
 | **Backend API** | Node.js, Express, `livekit-server-sdk` v2 | JWT access token minting, room creation with metadata injection via `RoomServiceClient`, in-memory & file-based state persistence (`transcripts/`), and audio serving (`recordings/`). |
 | **Agent Worker** | Python 3.11, `livekit-agents` 1.7.1 | Joins the room via `AgentServer`, listens for candidate speech via Silero VAD, streams speech to STT, generates concise acknowledgements with LLM, speaks questions via TTS, and maintains state. |
-| **AI Inference** | LiveKit Cloud Inference Gateway | Cloud-hosted STT, LLM, and TTS models accessed using a single LiveKit API key with zero third-party vendor credentials required. |
+| **AI Inference** | LiveKit Cloud Inference Gateway | Unified native engine for STT, LLM, and TTS accessed directly through the LiveKit Agents SDK without any third-party libraries or accounts. |
 
 ---
 
-## 2. AI Inference & Model Strategy
+## 2. Native LiveKit AI Inference Pipeline
 
-Rather than managing separate accounts, rate limits, SDKs, and billing contracts across multiple vendors (e.g. separate Deepgram, OpenAI, or Cartesia accounts), this project exclusively uses **LiveKit Cloud Inference**:
+The entire AI voice pipeline is implemented using the **LiveKit Agents SDK** (`livekit-agents`) and **LiveKit Cloud Inference**. 
 
-> [!NOTE]
-> **Zero Third-Party API Keys Needed:** All STT, LLM, and TTS models are routed, authenticated, and billed solely through `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET`. There are no separate provider API keys (no `DEEPGRAM_API_KEY`, no `OPENAI_API_KEY`, no `CARTESIA_API_KEY`).
+> [!IMPORTANT]
+> **100% LiveKit SDK:** No third-party provider SDKs, separate vendor libraries, or external API keys are used. All speech-to-text, conversational reasoning, voice synthesis, and turn detection are managed natively by LiveKit through `livekit.agents.inference` using your single `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET`.
 
-| Pipeline Step | Selected Model (via LiveKit Inference) | Technical Justification |
+| Pipeline Stage | LiveKit Agents SDK Component | Purpose & Implementation |
 |---|---|---|
-| **STT (Speech-to-Text)** | `deepgram/nova-3` | Sub-300ms streaming transcription latency, high accuracy for technical terms, and native WebSocket stream integration. |
-| **LLM (Reasoning)** | `openai/gpt-4.1-mini` | Low Time-to-First-Token (~200ms TTFT), strong instruction adherence for concise 1-sentence acknowledgements without hallucinating extra questions. |
-| **TTS (Text-to-Speech)** | `cartesia/sonic-3` (`voice: 9626c31c-...`) | Ultra-low latency voice synthesis designed specifically for natural, conversational voice agents. |
-| **VAD (Voice Activity Detection)** | `Silero VAD` (`livekit.plugins.silero`) | Local ONNX-based acoustic voice detection to reliably detect start and end of candidate speech boundaries. |
-| **Turn Detection** | `inference.TurnDetector` | Semantic End-of-Turn (EOT) classification to distinguish between natural speaking pauses and completed answers. |
+| **Speech-to-Text (STT)** | `inference.STT()` | Real-time streaming speech transcription with sub-300ms latency and native WebSocket streaming. |
+| **LLM Reasoning** | `inference.LLM()` | Fast Time-to-First-Token (~200ms TTFT) for natural, 1-sentence conversational acknowledgements. |
+| **Voice Synthesis (TTS)** | `inference.TTS()` | Ultra-low latency voice synthesis designed specifically for real-time conversational agents. |
+| **Voice Activity Detection (VAD)** | `Silero VAD` / `inference.VAD()` | Acoustic voice detection to reliably determine when the candidate starts and stops speaking. |
+| **Turn Detection** | `inference.TurnDetector()` | Semantic End-of-Turn (EOT) classification to distinguish natural speech pauses from completed answers. |
 
 ---
 
@@ -254,7 +254,7 @@ node scratch/smoke_test.js
 
 ## 8. Technical Decisions & Assumptions
 
-- **Single Provider Footprint via LiveKit Inference:** Model inference for STT, LLM, and TTS is consolidated under LiveKit Cloud, removing the overhead of managing separate provider SDKs and credential vaults.
+- **Pure LiveKit SDK Architecture:** Speech-to-Text, LLM conversation, and Voice synthesis are handled through LiveKit's native inference engine, removing any third-party SDK dependencies.
 - **Local Storage:** Per assignment specification (PRD §4, §9), recordings and transcripts are persisted to the local file system (`recordings/` and `transcripts/`), eliminating cloud bucket dependencies for local development.
 - **Ephemeral Worker Dispatch:** Each interview room triggers an ephemeral `rtc_session` worker instance that automatically exits upon room termination or participant disconnection.
 - **Explicit Scope Boundaries:** Candidate scoring, automated cheating detection, authentication, billing, and distributed container orchestrators were omitted in accordance with the assignment guidelines (PRD §14–15).
