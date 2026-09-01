@@ -417,7 +417,7 @@ export default function App() {
 
       {/* ─── Footer ─── */}
       <footer className="app-footer">
-        TapTalent · AI Voice Interview Platform · LiveKit Agents · Deepgram · Groq · ElevenLabs
+        TapTalent · AI Voice Interview Platform · LiveKit Agents · LiveKit Cloud Inference
       </footer>
     </div>
   );

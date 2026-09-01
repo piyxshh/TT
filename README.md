@@ -1,6 +1,6 @@
 # TapTalent — Real-Time AI Voice Interview Platform
 
-TapTalent is a real-time voice interview platform powered by **LiveKit Agents**. It conducts structured, automated candidate technical interviews using real-time Speech-to-Text (STT), Large Language Models (LLM), and Text-to-Speech (TTS), providing live visual status, real-time transcription, and post-interview recording playback.
+TapTalent is a real-time voice interview platform built with **LiveKit Agents** and **LiveKit Cloud Inference**. It conducts structured, automated candidate technical interviews using streaming Speech-to-Text (STT), Large Language Models (LLM), and Text-to-Speech (TTS), providing live visual status, real-time transcription, and post-interview recording playback.
 
 ---
 
@@ -23,26 +23,29 @@ TapTalent uses a decoupled, three-tier architecture coordinated over WebRTC:
         └───────────────────────────┘                 └─────────────────────────────┘
 ```
 
-### Component Roles
+### Component Breakdown
 
 | Layer | Technology | Responsibilities |
 |---|---|---|
 | **Frontend** | React 18, Vite, `livekit-client` | Clean candidate interface, microphone permission handling, audio streaming, live progress tracking, and post-interview transcript/audio review. |
 | **Backend API** | Node.js, Express, `livekit-server-sdk` v2 | JWT access token minting, room creation with metadata injection via `RoomServiceClient`, in-memory & file-based state persistence (`transcripts/`), and audio serving (`recordings/`). |
 | **Agent Worker** | Python 3.11, `livekit-agents` 1.7.1 | Joins the room via `AgentServer`, listens for candidate speech via Silero VAD, streams speech to STT, generates concise acknowledgements with LLM, speaks questions via TTS, and maintains state. |
-| **AI Inference** | LiveKit Cloud Inference Gateway | Cloud-hosted STT, LLM, and TTS models accessed using a single LiveKit API key with zero data retention. |
+| **AI Inference** | LiveKit Cloud Inference Gateway | Cloud-hosted STT, LLM, and TTS models accessed using a single LiveKit API key with zero third-party vendor credentials required. |
 
 ---
 
-## 2. AI Provider Choices & Reasoning
+## 2. AI Inference & Model Strategy
 
-Rather than managing separate accounts, rate limits, and billing contracts for multiple AI vendors, this project uses **LiveKit Inference** to route all voice and model workloads through LiveKit Cloud:
+Rather than managing separate accounts, rate limits, SDKs, and billing contracts across multiple vendors (e.g. separate Deepgram, OpenAI, or Cartesia accounts), this project exclusively uses **LiveKit Cloud Inference**:
 
-| Pipeline Step | Selected Model | Technical Justification |
+> [!NOTE]
+> **Zero Third-Party API Keys Needed:** All STT, LLM, and TTS models are routed, authenticated, and billed solely through `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET`. There are no separate provider API keys (no `DEEPGRAM_API_KEY`, no `OPENAI_API_KEY`, no `CARTESIA_API_KEY`).
+
+| Pipeline Step | Selected Model (via LiveKit Inference) | Technical Justification |
 |---|---|---|
 | **STT (Speech-to-Text)** | `deepgram/nova-3` | Sub-300ms streaming transcription latency, high accuracy for technical terms, and native WebSocket stream integration. |
 | **LLM (Reasoning)** | `openai/gpt-4.1-mini` | Low Time-to-First-Token (~200ms TTFT), strong instruction adherence for concise 1-sentence acknowledgements without hallucinating extra questions. |
-| **TTS (Text-to-Speech)** | `cartesia/sonic-3` (`voice: 9626c31c-...`) | Ultra-low latency voice synthesis designed specifically for conversational voice agents. |
+| **TTS (Text-to-Speech)** | `cartesia/sonic-3` (`voice: 9626c31c-...`) | Ultra-low latency voice synthesis designed specifically for natural, conversational voice agents. |
 | **VAD (Voice Activity Detection)** | `Silero VAD` (`livekit.plugins.silero`) | Local ONNX-based acoustic voice detection to reliably detect start and end of candidate speech boundaries. |
 | **Turn Detection** | `inference.TurnDetector` | Semantic End-of-Turn (EOT) classification to distinguish between natural speaking pauses and completed answers. |
 
@@ -61,9 +64,9 @@ Rather than managing separate accounts, rate limits, and billing contracts for m
    │     │
    │     ▼
    │  [Candidate Speaks Answer]
-   │     │  ├── Silero VAD detects acoustic activity
-   │     │  ├── Deepgram Nova-3 streams interim & final STT
-   │     │  └── Speech debounce timer (1.8s) waits for true silence
+   │     │  ├── Silero VAD detects acoustic voice activity
+   │     │  ├── LiveKit STT streams interim & final transcript chunks
+   │     │  └── Speech debounce timer (1.8s) waits for true speech silence
    │     ▼
    │  [Candidate Finishes Answer]
    │     │  ├── Append Candidate Turn to State
@@ -137,7 +140,7 @@ taptalent/
 │   ├── index.html          # HTML entrypoint
 │   ├── package.json        # Frontend dependencies
 │   └── .env.example        # Frontend environment template
-├── recordings/             # Runtime interview audio files (*.webm)
+├── recordings/             # Runtime interview audio files (*.webm / *.wav)
 ├── transcripts/            # Runtime interview JSON transcript records
 ├── dev.py                  # Unified multi-process launcher (Python)
 ├── package.json            # Root package scripts (npm run dev)
